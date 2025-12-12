@@ -4,7 +4,7 @@ import consola from "consola"
 import { streamSSE } from "hono/streaming"
 
 import { awaitApproval } from "~/lib/approval"
-import { checkRateLimit } from "~/lib/rate-limit"
+import { checkRateLimit, markRequestComplete } from "~/lib/rate-limit"
 import { state } from "~/lib/state"
 import {
   createChatCompletions,
@@ -39,6 +39,9 @@ export async function handleCompletion(c: Context) {
   }
 
   const response = await createChatCompletions(openAIPayload)
+
+  // Mark request as complete after Copilot request is initiated
+  markRequestComplete(state)
 
   if (isNonStreaming(response)) {
     consola.debug(

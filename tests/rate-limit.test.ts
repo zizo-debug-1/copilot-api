@@ -1,7 +1,8 @@
 import { describe, test, expect, beforeEach } from "bun:test"
 
-import { checkRateLimit, markRequestComplete } from "../src/lib/rate-limit"
 import type { State } from "../src/lib/state"
+
+import { checkRateLimit, markRequestComplete } from "../src/lib/rate-limit"
 
 describe("Rate limiting behavior", () => {
   let testState: State
@@ -38,18 +39,20 @@ describe("Rate limiting behavior", () => {
     await checkRateLimit(testState)
     markRequestComplete(testState)
 
-    const firstTimestamp = testState.lastRequestTimestamp!
+    const firstTimestamp = testState.lastRequestTimestamp ?? 0
 
     // Wait more than rate limit
     await new Promise((resolve) => setTimeout(resolve, 100))
 
-    // Manually set timestamp to simulate time passing
-    testState.lastRequestTimestamp = firstTimestamp - 11000 // 11 seconds ago
+    // Manually set timestamp to simulate time passing (11 seconds ago)
+    const pastTimestamp = firstTimestamp - 11000
+    // eslint-disable-next-line require-atomic-updates
+    testState.lastRequestTimestamp = pastTimestamp
 
     // Second request should be allowed
     await checkRateLimit(testState)
     // Should not have updated timestamp yet
-    expect(testState.lastRequestTimestamp).toBe(firstTimestamp - 11000)
+    expect(testState.lastRequestTimestamp).toBe(pastTimestamp)
   })
 
   test("should throw error if rate limit is exceeded without wait flag", async () => {
@@ -60,7 +63,7 @@ describe("Rate limiting behavior", () => {
     // Second request immediately after
     try {
       await checkRateLimit(testState)
-      expect(true).toBe(false) // Should not reach here
+      throw new Error("Expected error was not thrown")
     } catch (error: unknown) {
       expect(error).toBeDefined()
       if (error instanceof Error) {
@@ -88,8 +91,7 @@ describe("Rate limiting behavior", () => {
     // Try rapid second request
     try {
       await checkRateLimit(testState)
-      // If we get here without error, the test should fail
-      expect(true).toBe(false)
+      throw new Error("Expected error was not thrown")
     } catch (error: unknown) {
       // This is expected behavior
       expect(error).toBeDefined()

@@ -11,14 +11,14 @@ export async function checkRateLimit(state: State) {
   const now = Date.now()
 
   if (!state.lastRequestTimestamp) {
-    state.lastRequestTimestamp = now
+    // First request - no need to check, just return
     return
   }
 
   const elapsedSeconds = (now - state.lastRequestTimestamp) / 1000
 
   if (elapsedSeconds > state.rateLimitSeconds) {
-    state.lastRequestTimestamp = now
+    // Enough time has passed since last request
     return
   }
 
@@ -39,8 +39,15 @@ export async function checkRateLimit(state: State) {
     `Rate limit reached. Waiting ${waitTimeSeconds} seconds before proceeding...`,
   )
   await sleep(waitTimeMs)
-  // eslint-disable-next-line require-atomic-updates
-  state.lastRequestTimestamp = now
   consola.info("Rate limit wait completed, proceeding with request")
   return
+}
+
+/**
+ * Mark a request as complete by updating the last request timestamp.
+ * This should be called AFTER the request to Copilot has been successfully initiated.
+ */
+export function markRequestComplete(state: State) {
+  if (state.rateLimitSeconds === undefined) return
+  state.lastRequestTimestamp = Date.now()
 }
